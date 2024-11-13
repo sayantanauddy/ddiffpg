@@ -20,6 +20,9 @@ pyclustering = "^0.10.1.2"
 dtaidistance = "^2.3.11"
 Cython = "^3.0.0a10"
 hydra = "^2.5"
+torch = "^2.0.0"
+panda-gym = "^3.0.7"
+D4RL = "^1.1"
 
 [tool.poetry.dev-dependencies]
 
