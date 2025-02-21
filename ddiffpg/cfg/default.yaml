@@ -18,8 +18,8 @@ max_time: 3600 # in seconds
 artifact: null
 env:
   env_kwargs: null
-  name: 'antmaze-v1'
-  reward_type: 'sparse'
+  name: 'FiveLinkReacher'
+  reward_type: 'dense'
   random_init: False
   resolution: None
 
