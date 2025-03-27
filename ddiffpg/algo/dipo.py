@@ -215,7 +215,25 @@ class AgentDIPO(ActorCriticBase):
             target_Q = torch.min(target_Q1_projected, target_Q2_projected)
        
         current_Q1, current_Q2 = self.critic.get_q1_q2(obs, action)
-        critic_loss = F.binary_cross_entropy(current_Q1, target_Q) + F.binary_cross_entropy(current_Q2, target_Q)
+        
+        if torch.any(target_Q > 1.0) or torch.any(target_Q < 0.0):
+            print("Warning: target_Q contains values outside the range [0.0, 1.0]")
+            target_Q = torch.clamp(target_Q, 0.0, 1.0)
+
+        if torch.any(current_Q1 > 1.0) or torch.any(current_Q1 < 0.0):
+            print("Warning: current_Q1 contains values outside the range [0.0, 1.0]")
+            current_Q1 = torch.clamp(current_Q1, 0.0, 1.0)     
+
+        if torch.any(current_Q2 > 1.0) or torch.any(current_Q2 < 0.0):
+            print("Warning: current_Q2 contains values outside the range [0.0, 1.0]")
+            current_Q2 = torch.clamp(current_Q2, 0.0, 1.0)   
+
+        critic_loss1 = F.binary_cross_entropy(current_Q1, target_Q)
+        critic_loss2 = F.binary_cross_entropy(current_Q2, target_Q)
+
+        print(f'critic_loss1: {critic_loss1.item()}, critic_loss2: {critic_loss2.item()}')
+        critic_loss = critic_loss1 + critic_loss2
+        #critic_loss = F.binary_cross_entropy(current_Q1, target_Q) + F.binary_cross_entropy(current_Q2, target_Q)
         grad_norm = self.optimizer_update(self.critic_optimizer, critic_loss)
 
         return critic_loss.item(), grad_norm.item()
