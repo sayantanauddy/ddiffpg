@@ -22,9 +22,11 @@ class DiffusionGoalBuffer:
         
         if 'antmaze' in self.cfg.env.name:
             self.traj_dim = 2
+        elif 'FiveLinkReacher' in self.cfg.env.name:
+            self.traj_dim = 10 ## For 5LR, we take sin(theta), cos(theta) for each joint
         else:
-            self.traj_dim = 14 ## For 5LR
-        
+            self.traj_dim = 3
+            
         self.unsuccess = []
         self.unsuccess_id = []
         self.success_id = []
