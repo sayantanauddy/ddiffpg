@@ -28,42 +28,50 @@ class AgentDDiffPG(ActorCriticBase):
         self.actor_target = deepcopy(self.actor) if not self.cfg.algo.no_tgt_actor else self.actor
 
         if self.cfg.algo.noise.decay == 'linear':
-            self.noise_scheduler = LinearSchedule(start_val=self.cfg.algo.noise.std_max,
-                                                  end_val=self.cfg.algo.noise.std_min,
-                                                  total_iters=self.cfg.algo.noise.lin_decay_iters
-                                                  )
+            self.noise_scheduler = LinearSchedule(
+                start_val=self.cfg.algo.noise.std_max,
+                end_val=self.cfg.algo.noise.std_min,
+                total_iters=self.cfg.algo.noise.lin_decay_iters
+            )
         elif self.cfg.algo.noise.decay == 'exp':
-            self.noise_scheduler = ExponentialSchedule(start_val=self.cfg.algo.noise.std_max,
-                                                       gamma=self.cfg.algo.exp_decay_rate,
-                                                       end_val=self.cfg.algo.noise.std_min)
+            self.noise_scheduler = ExponentialSchedule(
+                start_val=self.cfg.algo.noise.std_max,
+                gamma=self.cfg.algo.exp_decay_rate,
+                end_val=self.cfg.algo.noise.std_min
+            )
         else:
             self.noise_scheduler = None
 
-        self.n_step_buffer = NStepReplay(self.obs_dim,
-                                         self.action_dim,
-                                         self.cfg.num_envs,
-                                         self.cfg.algo.nstep,
-                                         device=self.device)
+        self.n_step_buffer = NStepReplay(
+            self.obs_dim,
+            self.action_dim,
+            self.cfg.num_envs,
+            self.cfg.algo.nstep,
+            device=self.device
+        )
 
         self.diffusion_buffer = DiffusionGoalBuffer(
-                cfg=self.cfg,
-                capacity=self.cfg.algo.memory_size,
-                obs_dim=self.obs_dim[0], 
-                action_dim=self.action_dim,
-                num_envs=self.cfg.num_envs,
-                max_episode_len=self.max_episode_len, 
-                device=self.device
+            cfg=self.cfg,
+            capacity=self.cfg.algo.memory_size,
+            obs_dim=self.obs_dim[0], 
+            action_dim=self.action_dim,
+            num_envs=self.cfg.num_envs,
+            max_episode_len=self.max_episode_len, 
+            device=self.device
         )
 
         if 'antmaze' in self.cfg.env.name:
             self.pos_history = DensityTracker(self.cfg.env.env_kwargs, resolution=self.cfg.env.resolution)
-        self.intrinsic = IntrinsicM(self.obs_dim, 
-                                    type=self.cfg.intrinsic.type, 
-                                    env_name=self.cfg.env.name, 
-                                    normalize=self.cfg.intrinsic.normalize,
-                                    pos_enc=self.cfg.intrinsic.pos_enc,
-                                    L=self.cfg.intrinsic.L,
-                                    device=self.device)
+        
+        self.intrinsic = IntrinsicM(
+            self.obs_dim, 
+            type=self.cfg.intrinsic.type, 
+            env_name=self.cfg.env.name, 
+            normalize=self.cfg.intrinsic.normalize,
+            pos_enc=self.cfg.intrinsic.pos_enc,
+            L=self.cfg.intrinsic.L,
+            device=self.device
+        )
         self.reward_mean = deque(maxlen=int(1e4))
         self.explore_n = self.cfg.algo.batch_size
         self.explore_embedding = None
@@ -128,7 +136,13 @@ class AgentDDiffPG(ActorCriticBase):
                 p = 1.0
         return p
     
-    def explore_env(self, env, timesteps: int, random: bool = False, total_steps: int = None) -> list:
+    def explore_env(
+            self, 
+            env, 
+            timesteps: int, 
+            random: bool = False, 
+            total_steps: int = None) -> list:
+        
         obs_dim = (self.obs_dim,) if isinstance(self.obs_dim, int) else self.obs_dim
         traj_states = torch.empty((self.cfg.num_envs, timesteps) + (*obs_dim,)).to(self.device)
         traj_actions = torch.empty((self.cfg.num_envs, timesteps) + (self.action_dim,)).to(self.device)
@@ -138,6 +152,7 @@ class AgentDDiffPG(ActorCriticBase):
         
         obs = self.obs
         self.p = self.get_exp_p(total_steps)
+
         for i in range(timesteps):
             if self.cfg.algo.obs_norm:
                 self.obs_rms.update(obs)
@@ -145,7 +160,13 @@ class AgentDDiffPG(ActorCriticBase):
                 action = torch.rand((self.cfg.num_envs, self.action_dim),
                                     device=self.cfg.device) * 2.0 - 1.0
             else:
-                embedded_obs = add_embedding(obs, self.explore_embedding, p=self.p, modes=self.mode_embedding if self.cfg.algo.exp.mode_embedding else [])
+                embedded_obs = add_embedding(
+                    obs, 
+                    self.explore_embedding, 
+                    p=self.p, 
+                    modes=self.mode_embedding if self.cfg.algo.exp.mode_embedding else []
+                )
+                
                 action = self.get_actions(embedded_obs, sample=True)
 
             next_obs, reward, done, info = env.step(action)
@@ -161,7 +182,14 @@ class AgentDDiffPG(ActorCriticBase):
             # add data to diffusion buffer
             if 'success' in info.keys():
                 traj_info['success'] = info['success']
-            self.diffusion_buffer.add_to_buffer(obs, action, reward * self.cfg.algo.reward_scale, next_obs, done, traj_info)
+
+            self.diffusion_buffer.add_to_buffer(
+                obs, 
+                action, 
+                reward * self.cfg.algo.reward_scale, 
+                next_obs, 
+                done, 
+                traj_info)
 
             traj_states[:, i] = obs
             traj_actions[:, i] = action
@@ -169,6 +197,7 @@ class AgentDDiffPG(ActorCriticBase):
             traj_rewards[:, i] = reward
             traj_next_states[:, i] = next_obs
             obs = next_obs
+            
         self.obs = obs
 
         return timesteps * self.cfg.num_envs

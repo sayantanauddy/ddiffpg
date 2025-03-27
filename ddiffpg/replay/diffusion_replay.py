@@ -23,7 +23,7 @@ class DiffusionGoalBuffer:
         if 'antmaze' in self.cfg.env.name:
             self.traj_dim = 2
         else:
-            self.traj_dim = 3
+            self.traj_dim = 14 ## For 5LR
         
         self.unsuccess = []
         self.unsuccess_id = []
@@ -171,6 +171,11 @@ class DiffusionGoalBuffer:
         self.replay_buffer.update_target_action_dim(indices)
         self.Qs = [explore_Q] + Qs
         self.embeddings = embeddings
+
+        print("Num clusters:", len(self.clusters))
+        print("Num success:", len(self.success))
+        print("Num unsuccess:", len(self.unsuccess))
+
 
     @torch.no_grad()
     def cluster(self):
